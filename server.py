@@ -27,7 +27,7 @@ from cryptography.fernet import Fernet
 
 
 #Used to access the Database 
-app = Flask(__name__, template_folder='templates')
+app = Flask(__name__)
 app.config['MYSQL_HOST'] = 'mysql.railway.internal'
 app.config['MYSQL_USER'] = 'root'
 app.config['MYSQL_PASSWORD'] = 'tUZrONDQxExptjZmrSkMyBFKxUqYoYbN'
