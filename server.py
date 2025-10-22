@@ -31,6 +31,9 @@
 #https://stackoverflow.com/questions/41117733/validation-of-a-password-python
 #https://medium.com/@ryan_forrester_/building-a-password-strength-checker-in-python-6f723d20511d
 
+#Creation of derivation key
+#https://stackoverflow.com/questions/61985537/symmetric-encryption-using-fernet-in-python-master-password-use-case
+
 
 #START: CODE COMPLETED BY CHRISTIAN
 from flask import Flask, render_template, redirect, url_for, request, session, flash #pip install flask
@@ -74,6 +77,18 @@ def email_exists(email):
     user = cursor.fetchone()
     cursor.close()
     return user
+
+
+#Used to  encrypt / decrypt passwords (Uses SHA-256 and PBKDF2 to encrypt it)
+def derivationKey(master_password, salt):
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100_000
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(master_password.encode()))
+    return key
 
 
 @app.route("/")
@@ -131,5 +146,44 @@ def register():
 
     return render_template("register.html")
 
+@app.route("/login", methods = ["GET", "POST"])
+def login():
+    #Prevents any errors with user registering whilst signed in
+    if "user_id" in session:
+        flash("You are already logged in", "warning")
+        return redirect(url_for("accountPage"))
+    
+    if request.method == "GET":
+        return render_template("login.html")
+    
+    else:
+        email = request.form["email"]
+        password = request.form["password"]
+
+        #Used to grab every user with the specific email typed in (storing session / user id)
+        cursor = mysql.connection.cursor()
+        cursor.execute("SELECT * FROM users Where email = %s", (email,))
+        user = cursor.fetchone()
+        cursor.close()
+
+        #Input Validation
+        if not email or not password:
+            flash("You must input an email and password to login.", 'error')
+        
+        elif not user:
+            flash("Invalid email address", 'error')
+        
+        #compares if the password in the input field is equal to the hashed password
+        elif not check_password_hash(user["password"], password):
+            flash("Invalid password", 'error')
+
+        else:
+            #Stores the user's session so that it doesn't log them out if they navigate to another page
+            session["user_id"] = user["user_id"]
+            session["fullName"] = user["fullName"]
+            session["email"] = user["email"]
+            session["salt"] = user["salt"]
+            session["key"] = derivationKey(password, user["salt"]) #Used for Encrypting/Decrypting account passwords
+            
 
 
