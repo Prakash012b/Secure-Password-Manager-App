@@ -34,6 +34,10 @@
 #Creation of derivation key
 #https://stackoverflow.com/questions/61985537/symmetric-encryption-using-fernet-in-python-master-password-use-case
 
+#password hashing
+#https://werkzeug.palletsprojects.com/en/stable/utils/#werkzeug.security.generate_password_hash
+#https://thepythoncode.com/article/build-a-password-manager-in-python
+
 
 #START: CODE COMPLETED BY CHRISTIAN
 from flask import Flask, render_template, redirect, url_for, request, session, flash #pip install flask
@@ -112,8 +116,8 @@ def register():
         fullName = request.form["username"]
         email = request.form["email"]
         password = request.form["password"]
-        hashPass = generate_password_hash(password)
-        salt = os.urandom(16) #generates random string for salt
+        hashPass = generate_password_hash(password) #Hashes the current password using scrypt. Automatically applies a salt length of 16
+        salt = os.urandom(16) #generates random string for salt for user's derivation key
 
         #Input Validation for Email
         if not emailValidation(email):
@@ -124,7 +128,7 @@ def register():
             flash("Email is already registered", 'error')
             return redirect(url_for("register"))
         
-        #Password Validation (Contains 1 upper/lowercase letter, number, special character and between 8-30 characters)
+        #Password Validation (Contains 1 upper/lowercase letter, number, special character and between 15-30 characters)
         elif password.search(r'[0-9]', password) is None:
             flash("Password has to contain atleast 1 letter.")
             
@@ -137,8 +141,8 @@ def register():
         elif password.search(r'[$%@#!?%*]', password) is None:
             flash("Password has to contain atleast 1 special character.")
 
-        elif password.search(r'.{8,30}', password) is None:
-            flash("Password has to be between 8 and 30 characters.")
+        elif password.search(r'.{15,30}', password) is None:
+            flash("Password has to be between 15 and 30 characters.")
 
         cursor = mysql.connection.cursor()
         cursor.execute("INSERT into users (fullName, email, password_hash, salt) VALUES (%s, %s, %s, %s)", fullName, email, hashPass, salt)
@@ -184,6 +188,9 @@ def login():
             session["email"] = user["email"]
             session["salt"] = user["salt"]
             session["key"] = derivationKey(password, user["salt"]) #Used for Encrypting/Decrypting account passwords
-            
 
+            return redirect(url_for("accountPage"))
+        
+    return render_template("login.html") 
 
+#END: CODE COMPLETED BY CHRISTIAN
