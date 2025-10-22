@@ -1,4 +1,6 @@
-#connecting database
+#SOURCES
+
+#Connecting to the Database
 #https://www.youtube.com/watch?v=WeslBREciKY&t=153s
 #https://www.youtube.com/watch?v=nrG0tKSYMHc&t=295s
 #https://www.geeksforgeeks.org/python/flask-app-configuation/app.
@@ -6,10 +8,29 @@
 #https://www.geeksforgeeks.org/python/profile-application-using-python-flask-and-mysql/
 #https://github.com/alexferl/flask-mysqldb
 
-#Session permanence (keeping user logged in / session timeout)
+#Session Permanence (keeping user logged in / session timeout)
 #https://stackoverflow.com/questions/37227780/flask-session-persisting-after-close-browser
 #https://stackoverflow.com/questions/3024153/how-to-expire-session-due-to-inactivity-in-django
 #https://stackoverflow.com/questions/11783025/is-there-an-easy-way-to-make-sessions-timeout-in-flask
+
+#Input Validations
+#https://www.geeksforgeeks.org/check-if-email-address-valid-or-not-in-python/
+#https://stackoverflow.com/questions/65915695/how-do-i-make-sql-python-find-if-a-full_name-is-already-in-the-database
+#https://python-forum.io/thread-7016.html
+#https://www.geeksforgeeks.org/python/password-validation-in-python/
+
+#Register / Login Pages 
+#https://tedboy.github.io/flask/generated/werkzeug.check_password_hash.html 
+#https://stackoverflow.com/questions/46723767/how-to-get-current-user-when-implementing-python-flask-security - returning a full_name
+#https://stackoverflow.com/questions/59380641/how-to-display-full_name-in-multiple-pages-using-flask
+#https://www.youtube.com/watch?v=fOj16SIa02U&list=LL&index=4
+#https://www.youtube.com/watch?v=zjvfeho2890&list=LL&index=5
+
+#Password Validation
+#https://www.geeksforgeeks.org/python/password-validation-in-python/
+#https://stackoverflow.com/questions/41117733/validation-of-a-password-python
+#https://medium.com/@ryan_forrester_/building-a-password-strength-checker-in-python-6f723d20511d
+
 
 #START: CODE COMPLETED BY CHRISTIAN
 from flask import Flask, render_template, redirect, url_for, request, session, flash #pip install flask
@@ -19,6 +40,7 @@ from flask import Flask, redirect, request, render_template
 from flask import request, jsonify
 import os, base64
 from datetime import timedelta, datetime
+import re
 
 #pip install cryptography
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC 
@@ -37,11 +59,77 @@ app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 app.secret_key = os.urandom(24) #generates random secret key for each user session
 mysql = MySQL(app)
 
-#Uploading files
+#Extensions used when uploading files
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static/uploads')
 
-#END: CODE COMPLETED BY CHRISTIAN
+#Validation definitions
+#Email format: x@y.com or abc.def@123.co.uk
+def emailValidation(email):
+    return re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email)
+
+def email_exists(email):
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT * FROM Users WHERE email = %s", (email,))
+    user = cursor.fetchone()
+    cursor.close()
+    return user
+
+
+@app.route("/")
+def home():
+    return redirect(url_for("login"))
+
+
+@app.route("register", methods = ["GET", "POST"])
+def register():
+    #Prevents any errors with user registering whilst signed in
+    if "user_id" in session:
+        flash("You must log out to create another account", 'error')
+        return redirect(url_for("accountPage"))
+    
+    #displays register page
+    if request.method == "GET":
+        return render_template("register.html")
+    
+    else:
+        #Grabs the user's input information and makes it into variables
+        fullName = request.form["username"]
+        email = request.form["email"]
+        password = request.form["password"]
+        hashPass = generate_password_hash(password)
+        salt = os.urandom(16) #generates random string for salt
+
+        #Input Validation for Email
+        if not emailValidation(email):
+            flash("Email is in an invalid format (Email Format: xx@yy.com or abc.def@123.co.uk )", 'error')
+            return redirect(url_for("register"))
+        
+        elif email_exists(email):
+            flash("Email is already registered", 'error')
+            return redirect(url_for("register"))
+        
+        #Password Validation (Contains 1 upper/lowercase letter, number, special character and between 8-30 characters)
+        elif password.search(r'[0-9]', password) is None:
+            flash("Password has to contain atleast 1 letter.")
+            
+        elif password.search(r'[a-z]', password) is None:
+            flash("Password has to contain atleast 1 lowercase letter.")
+
+        elif password.search(r'[A-Z]', password) is None:
+            flash("Password has to contain atleast 1 uppercase letter.")
+
+        elif password.search(r'[$%@#!?%*]', password) is None:
+            flash("Password has to contain atleast 1 special character.")
+
+        elif password.search(r'.{8,30}', password) is None:
+            flash("Password has to be between 8 and 30 characters.")
+
+        cursor = mysql.connection.cursor()
+        cursor.execute("INSERT into users (fullName, email, password_hash, salt) VALUES (%s, %s, %s, %s)", fullName, email, hashPass, salt)
+        mysql.connection.commit()
+
+    return render_template("register.html")
 
 
 
