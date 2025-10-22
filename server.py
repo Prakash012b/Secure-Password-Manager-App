@@ -27,7 +27,7 @@ from cryptography.fernet import Fernet
 
 
 #Used to access the Database 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='templates')
 app.config['MYSQL_HOST'] = 'mysql.railway.internal'
 app.config['MYSQL_USER'] = 'root'
 app.config['MYSQL_PASSWORD'] = 'tUZrONDQxExptjZmrSkMyBFKxUqYoYbN'
@@ -36,6 +36,11 @@ app.config['MYSQL_PORT'] = 3306
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 app.secret_key = os.urandom(24) #generates random secret key for each user session
 mysql = MySQL(app)
+
+#Uploading files
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static/uploads')
+
 #END: CODE COMPLETED BY CHRISTIAN
 
 
