@@ -59,12 +59,10 @@ import os, base64
 from datetime import timedelta, datetime
 import re
 
-
 #pip install cryptography
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC 
 from cryptography.hazmat.primitives import hashes
 from cryptography.fernet import Fernet
-#from crypto_utils import derive_fernet_key
 
 
 #Used to access the Database 
@@ -81,7 +79,6 @@ mysql = MySQL(app)
 #Extensions used when uploading files
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static/uploads')
-
 
 #Validation definitions
 #Email format: x@y.com or abc.def@123.co.uk
@@ -305,8 +302,6 @@ def addAccount():
     return render_template("addAccount.html")
 
 
-KDF_ITERATIONS = 200_000
-
 def generate_salt() -> bytes:
     return os.urandom(16)
 
@@ -338,16 +333,15 @@ def decrypt_account():
         cursor.close()
         return jsonify({"ok": False, "error": "User not found"}), 404
 
-    salt = user[0]
+    salt = user["salt"]
 
-    # derive Fernet key from master password
+    # Derive key from master password
     try:
         key = derive_fernet_key(master_password, salt)
         f = Fernet(key)
     except Exception:
         cursor.close()
         return jsonify({"ok": False, "error": "Key derivation failed"}), 500
-
 
     # Fetch account password
     cursor.execute("SELECT password_encrypted FROM accounts WHERE id=%s AND user_id=%s",
@@ -357,11 +351,9 @@ def decrypt_account():
     if not acc:
         return jsonify({"ok": False, "error": "Account not found"}), 404
 
-
-    ciphertext = acc[0]
     # Try decrypting
     try:
-        password_plain = f.decrypt(ciphertext).decode()
+        password_plain = f.decrypt(acc["password_encrypted"]).decode()
         return jsonify({"ok": True, "password": password_plain})
     except Exception:
         return jsonify({"ok": False, "error": "Invalid master password"}), 403

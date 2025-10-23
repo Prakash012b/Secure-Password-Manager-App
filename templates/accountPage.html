@@ -69,107 +69,17 @@
             <td>{{ acc.id }}</td>
             <td>{{ acc.title }}</td>
             <td>{{ acc.account_username }}</td>
-            <!-- Masked password with eye button to reveal -->
-
-
-            <td>
-                <span id="pwd-{{ acc.id }}"><code>••••••••</code></span>
-                <button class="btn btn-sm btn-outline-secondary view-password-btn" data-acc-id="{{ acc.id }}">
-                    <i class="bi bi-eye"></i> <!-- Eye icon from Bootstrap Icons -->
-                </button>
-            </td>
+            <td><code>{{ acc.password_encrypted }}</code></td> <!-- Encrypted password -->
           </tr>
-
-
           {% endfor %}
         {% else %}
         <!-- Show this row if no accounts exist -->
-
-
-          <tr>
-            <td colspan="4" class="text-center">No accounts added yet.</td>
-          </tr>
+          <tr><td colspan="4" class="text-center">No accounts added yet.</td></tr>
         {% endif %}
       </tbody>
     </table>
+  </div>
 
-    <!-- Modal to enter master password -->
-    <div class="modal fade" id="masterPwdModal" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <form id="masterPwdForm">
-            <div class="modal-header">
-              <h5 class="modal-title">Enter Master Password</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-              <div class="mb-3">
-                <input type="password" id="master_password" class="form-control" placeholder="Master password" required>
-                <input type="hidden" id="modal_account_id">
-                <div id="modal_error" class="text-danger mt-2"></div>
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button type="submit" class="btn btn-primary">Reveal</button>
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-
-        <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const modal = new bootstrap.Modal(document.getElementById('masterPwdModal'));
-        const form = document.getElementById('masterPwdForm');
-
-        // Click on eye button opens modal
-        document.querySelectorAll('.view-password-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.getElementById('modal_account_id').value = btn.dataset.accId;
-                document.getElementById('master_password').value = '';
-                document.getElementById('modal_error').textContent = '';
-                modal.show();
-            });
-        });
-
-        // Submit master password to decrypt
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const accId = document.getElementById('modal_account_id').value;
-            const masterPassword = document.getElementById('master_password').value;
-            const errorEl = document.getElementById('modal_error');
-
-            try {
-                const resp = await fetch('{{ url_for("decrypt_account") }}', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ account_id: accId, master_password: masterPassword })
-                });
-                const data = await resp.json();
-
-                if (!data.ok) {
-                    errorEl.textContent = data.error;
-                    return;
-                }
-
-                // Show decrypted password
-                const pwdSpan = document.getElementById('pwd-' + accId);
-                pwdSpan.innerHTML = `<code>${data.password}</code>`;
-                modal.hide();
-
-                // Auto-mask after 10 seconds
-                setTimeout(() => {
-                    pwdSpan.innerHTML = '<code>••••••••</code>';
-                }, 10000);
-
-            } catch (err) {
-                errorEl.textContent = 'Network error';
-            }
-        });
-    });
-    </script>
 <!--End:code by prakash-->
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
