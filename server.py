@@ -39,6 +39,7 @@
 #password hashing
 #https://werkzeug.palletsprojects.com/en/stable/utils/#werkzeug.security.generate_password_hash
 #https://thepythoncode.com/article/build-a-password-manager-in-python
+#https://zetcode.com/python/os-urandom/
 
 #NAVBAR/Styling
 #https://getbootstrap.com/docs/5.0/components/navbar/
@@ -65,11 +66,11 @@ from cryptography.fernet import Fernet
 
 #Used to access the Database 
 app = Flask(__name__, template_folder='templates')
-app.config['MYSQL_HOST'] = 'mysql.railway.internal'
+app.config['MYSQL_HOST'] = 'turntable.proxy.rlwy.net'
 app.config['MYSQL_USER'] = 'root'
 app.config['MYSQL_PASSWORD'] = 'tUZrONDQxExptjZmrSkMyBFKxUqYoYbN'
 app.config['MYSQL_DB'] = 'railway'
-app.config['MYSQL_PORT'] = 3306
+app.config['MYSQL_PORT'] = 11731
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 app.secret_key = os.urandom(24) #generates random secret key for each user session
 mysql = MySQL(app)
@@ -85,7 +86,7 @@ def emailValidation(email):
 
 def emailExists(email):
     cursor = mysql.connection.cursor()
-    cursor.execute("SELECT * FROM Users WHERE email = %s", (email,))
+    cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
     user = cursor.fetchone()
     cursor.close()
     return user
@@ -127,6 +128,7 @@ def register():
         password = request.form["password"]
         hashPass = generate_password_hash(password) #Hashes the current password using scrypt. Automatically applies a salt length of 16
         salt = os.urandom(16) #generates random string for salt for user's derivation key
+        salt = base64.urlsafe_b64encode(salt).decode("utf-8") #used to encode the salt into a string before storing in DB
 
         #Input Validation for Email
         if not emailValidation(email):
@@ -138,23 +140,23 @@ def register():
             return redirect(url_for("register"))
         
         #Password Validation (Contains 1 upper/lowercase letter, number, special character and between 15-30 characters)
-        elif password.search(r'[0-9]', password) is None:
-            flash("Password has to contain atleast 1 letter.")
+        elif re.search(r'[0-9]', password) is None:
+            flash("Password has to contain atleast 1 number.")
             
-        elif password.search(r'[a-z]', password) is None:
+        elif re.search(r'[a-z]', password) is None:
             flash("Password has to contain atleast 1 lowercase letter.")
 
-        elif password.search(r'[A-Z]', password) is None:
+        elif re.search(r'[A-Z]', password) is None:
             flash("Password has to contain atleast 1 uppercase letter.")
 
-        elif password.search(r'[$%@#!?%*]', password) is None:
+        elif re.search(r'[$%@#!?%*]', password) is None:
             flash("Password has to contain atleast 1 special character.")
 
-        elif password.search(r'.{15,30}', password) is None:
+        elif password < 15 and password > 30:
             flash("Password has to be between 15 and 30 characters.")
 
         cursor = mysql.connection.cursor()
-        cursor.execute("INSERT into users (fullName, email, password_hash, salt) VALUES (%s, %s, %s, %s)", fullName, email, hashPass, salt)
+        cursor.execute("INSERT into users (fullName, email, password_hash, salt) VALUES (%s, %s, %s, %s)", (fullName, email, hashPass, salt))
         mysql.connection.commit()
 
     return render_template("register.html")
