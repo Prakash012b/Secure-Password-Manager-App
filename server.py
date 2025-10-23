@@ -33,11 +33,19 @@
 
 #Creation of derivation key
 #https://stackoverflow.com/questions/61985537/symmetric-encryption-using-fernet-in-python-master-password-use-case
+#https://cryptography.io/en/latest/fernet/
+#https://www.geeksforgeeks.org/python/fernet-symmetric-encryption-using-cryptography-module-in-python/
 
 #password hashing
 #https://werkzeug.palletsprojects.com/en/stable/utils/#werkzeug.security.generate_password_hash
 #https://thepythoncode.com/article/build-a-password-manager-in-python
 
+#NAVBAR/Styling
+#https://getbootstrap.com/docs/5.0/components/navbar/
+
+#Flash
+#https://flask.palletsprojects.com/en/stable/patterns/flashing/
+#https://stackoverflow.com/questions/44569040/change-color-of-flask-flash-messages
 
 #START: CODE COMPLETED BY CHRISTIAN
 from flask import Flask, render_template, redirect, url_for, request, session, flash #pip install flask
@@ -75,7 +83,7 @@ app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static/uploads')
 def emailValidation(email):
     return re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email)
 
-def email_exists(email):
+def emailExists(email):
     cursor = mysql.connection.cursor()
     cursor.execute("SELECT * FROM Users WHERE email = %s", (email,))
     user = cursor.fetchone()
@@ -83,7 +91,7 @@ def email_exists(email):
     return user
 
 
-#Used to  encrypt / decrypt passwords (Uses SHA-256 and PBKDF2 to encrypt it)
+#Used to create a derivation key using the user's master password and salt value. (Uses SHA-256 and PBKDF2 to create it)
 def derivationKey(master_password, salt):
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
@@ -91,7 +99,7 @@ def derivationKey(master_password, salt):
         salt=salt,
         iterations=100_000
     )
-    key = base64.urlsafe_b64encode(kdf.derive(master_password.encode()))
+    key = base64.urlsafe_b64encode(kdf.derive(master_password.encode())) #This key is used to encrypt/decrypt user account passwords
     return key
 
 
@@ -100,7 +108,8 @@ def home():
     return redirect(url_for("login"))
 
 
-@app.route("register", methods = ["GET", "POST"])
+#Register Function
+@app.route("/register", methods = ["GET", "POST"])
 def register():
     #Prevents any errors with user registering whilst signed in
     if "user_id" in session:
@@ -113,7 +122,7 @@ def register():
     
     else:
         #Grabs the user's input information and makes it into variables
-        fullName = request.form["username"]
+        fullName = request.form["fullName"]
         email = request.form["email"]
         password = request.form["password"]
         hashPass = generate_password_hash(password) #Hashes the current password using scrypt. Automatically applies a salt length of 16
@@ -124,7 +133,7 @@ def register():
             flash("Email is in an invalid format (Email Format: xx@yy.com or abc.def@123.co.uk )", 'error')
             return redirect(url_for("register"))
         
-        elif email_exists(email):
+        elif emailExists(email):
             flash("Email is already registered", 'error')
             return redirect(url_for("register"))
         
@@ -150,6 +159,9 @@ def register():
 
     return render_template("register.html")
 
+
+
+#Login Function
 @app.route("/login", methods = ["GET", "POST"])
 def login():
     #Prevents any errors with user registering whilst signed in
@@ -161,6 +173,7 @@ def login():
         return render_template("login.html")
     
     else:
+        #Grabs the user's email and password
         email = request.form["email"]
         password = request.form["password"]
 
@@ -192,5 +205,14 @@ def login():
             return redirect(url_for("accountPage"))
         
     return render_template("login.html") 
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+  
+#makes it so that it only runs the app when executed
+if __name__ == "__main__":
+    app.run(debug=True) #updates in real-time + shows bugs / errors on CMD
 
 #END: CODE COMPLETED BY CHRISTIAN
