@@ -59,10 +59,12 @@ import os, base64
 from datetime import timedelta, datetime
 import re
 
+
 #pip install cryptography
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC 
 from cryptography.hazmat.primitives import hashes
 from cryptography.fernet import Fernet
+#from crypto_utils import derive_fernet_key
 
 
 #Used to access the Database 
@@ -79,6 +81,7 @@ mysql = MySQL(app)
 #Extensions used when uploading files
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static/uploads')
+
 
 #Validation definitions
 #Email format: x@y.com or abc.def@123.co.uk
@@ -300,6 +303,68 @@ def addAccount():
 
     # If GET request, just render the add account form
     return render_template("addAccount.html")
+
+
+KDF_ITERATIONS = 200_000
+
+def generate_salt() -> bytes:
+    return os.urandom(16)
+
+def derive_fernet_key(master_password: str, salt: bytes) -> bytes:
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=KDF_ITERATIONS
+    )
+    return base64.urlsafe_b64encode(kdf.derive(master_password.encode()))
+
+@app.route("/decrypt_account", methods=["POST"])
+def decrypt_account():
+    data = request.get_json()
+    account_id = data.get("account_id")
+    master_password = data.get("master_password")
+
+    if "user_id" not in session:
+        return jsonify({"ok": False, "error": "Not authenticated"}), 401
+
+    user_id = session["user_id"]
+
+    # Fetch user's salt
+    cursor = mysql.connection.cursor(dictionary=True)
+    cursor.execute("SELECT salt FROM users WHERE id=%s", (user_id,))
+    user = cursor.fetchone()
+    if not user:
+        cursor.close()
+        return jsonify({"ok": False, "error": "User not found"}), 404
+
+    salt = user[0]
+
+    # derive Fernet key from master password
+    try:
+        key = derive_fernet_key(master_password, salt)
+        f = Fernet(key)
+    except Exception:
+        cursor.close()
+        return jsonify({"ok": False, "error": "Key derivation failed"}), 500
+
+
+    # Fetch account password
+    cursor.execute("SELECT password_encrypted FROM accounts WHERE id=%s AND user_id=%s",
+                   (account_id, user_id))
+    acc = cursor.fetchone()
+    cursor.close()
+    if not acc:
+        return jsonify({"ok": False, "error": "Account not found"}), 404
+
+
+    ciphertext = acc[0]
+    # Try decrypting
+    try:
+        password_plain = f.decrypt(ciphertext).decode()
+        return jsonify({"ok": True, "password": password_plain})
+    except Exception:
+        return jsonify({"ok": False, "error": "Invalid master password"}), 403
 
 #END: CODE COMPLETED BY PRAKASH
 
