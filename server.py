@@ -18,6 +18,7 @@
 #https://stackoverflow.com/questions/65915695/how-do-i-make-sql-python-find-if-a-full_name-is-already-in-the-database
 #https://python-forum.io/thread-7016.html
 #https://www.geeksforgeeks.org/python/password-validation-in-python/
+#https://stackoverflow.com/questions/27281216/how-can-i-keep-field-values-in-a-form-after-submit
 
 #Register / Login Pages 
 #https://tedboy.github.io/flask/generated/werkzeug.check_password_hash.html 
