@@ -219,19 +219,92 @@ def login():
 
 
 
-@app.route("/accountPage", methods = ["GET", "POST"])
-def accountPage():
-    return render_template("accountPage.html")
-
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for("login"))
   
+#END: CODE COMPLETED BY CHRISTIAN
+
+#START: CODE COMPLETED BY PRAKASH
+
+# Route to display all saved accounts for the logged-in user
+@app.route("/accountPage")
+def accountPage():
+    # Check if the user is logged in
+    if "user_id" not in session:
+        flash("Please log in first", "error")
+        return redirect(url_for("login"))
+
+ # Fetch all accounts for the current user from the database
+    cursor = mysql.connection.cursor()
+    cursor.execute(
+        "SELECT id, title, account_username, password_encrypted FROM accounts WHERE user_id = %s",
+        (session["user_id"],),
+    )
+    accounts = cursor.fetchall() # Get all account records as a list of dictionaries
+    cursor.close()
+
+    # Decrypt passwords using the user's session key
+    key = session.get("key")# Retrieve encryption key from session
+    f = Fernet(key)     # Initialize Fernet encryption
+    for acc in accounts:
+        try:
+            # Decrypt the password
+            acc["password_encrypted"] = f.decrypt(acc["password_encrypted"]).decode()
+        except Exception:
+            # If decryption fails, show an error message instead
+            acc["password_encrypted"] = "[Error decrypting]"
+
+    return render_template("accountPage.html", accounts=accounts)
+
+# Route to add a new account
+@app.route("/addAccount", methods=["GET", "POST"])
+def addAccount():
+    # Check if the user is logged in
+    if "user_id" not in session:
+        flash("Please log in first", "error")
+        return redirect(url_for("login"))
+
+     # Handle form submission
+    if request.method == "POST":
+        title = request.form["title"]
+        account_username = request.form["account_username"]
+        password_plain = request.form["password_plain"]
+
+        key = session.get("key")
+        if not key:
+             # If the key is missing, session expired
+            flash("Session expired, please log in again.", "danger")
+            return redirect(url_for("login"))
+
+
+        # Encrypt the password before saving
+        f = Fernet(key)
+        password_encrypted = f.encrypt(password_plain.encode())
+
+        # Insert the new account into the database
+        cursor = mysql.connection.cursor()
+        cursor.execute(
+            """
+            INSERT INTO accounts (user_id, title, account_username, password_encrypted)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (session["user_id"], title, account_username, password_encrypted),
+        )
+        mysql.connection.commit()
+        cursor.close()
+
+        flash("New account added successfully!", "success")
+        return redirect(url_for("accountPage"))
+
+    # If GET request, just render the add account form
+    return render_template("addAccount.html")
+
+#END: CODE COMPLETED BY PRAKASH
+
+  
 #makes it so that it only runs the app when executed
 if __name__ == "__main__":
     app.run(debug=True) #updates in real-time + shows bugs / errors on CMD
-
-#END: CODE COMPLETED BY CHRISTIAN
-
 
