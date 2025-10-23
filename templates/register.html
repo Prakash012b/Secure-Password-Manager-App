@@ -44,8 +44,8 @@
 
     <!-- Uses the HTTP POST to access the database and insert these values into the user table-->
     <form method = "POST" action="{{url_for('register')}}">
-        <input type = "text" name="fullName" placeholder = "Full Name">
-        <input type = "email" name = "email" placeholder = "Email">
+        <input type = "text" name="fullName" placeholder = "Full Name" value="{{ request.form['fullName'] }}">
+        <input type = "email" name = "email" placeholder = "Email" value="{{ request.form['email'] }}">
         <input type = "password" name = "password" placeholder = "Password">
         <button type = "submit">Register</button>
         

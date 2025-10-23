@@ -128,38 +128,46 @@ def register():
         password = request.form["password"]
         hashPass = generate_password_hash(password) #Hashes the current password using scrypt. Automatically applies a salt length of 16
         salt = os.urandom(16) #generates random string for salt for user's derivation key
-        salt = base64.urlsafe_b64encode(salt).decode("utf-8") #used to encode the salt into a string before storing in DB
 
         #Input Validation for Email
         if not emailValidation(email):
             flash("Email is in an invalid format (Email Format: xx@yy.com or abc.def@123.co.uk )", 'error')
-            return redirect(url_for("register"))
+            return render_template("register.html", fullName = fullName, email = email)
         
         elif emailExists(email):
             flash("Email is already registered", 'error')
-            return redirect(url_for("register"))
+            return render_template("register.html", fullName = fullName, email = email)
         
         #Password Validation (Contains 1 upper/lowercase letter, number, special character and between 15-30 characters)
         elif re.search(r'[0-9]', password) is None:
             flash("Password has to contain atleast 1 number.")
+            return render_template("register.html", fullName = fullName, email = email)
             
         elif re.search(r'[a-z]', password) is None:
             flash("Password has to contain atleast 1 lowercase letter.")
+            return render_template("register.html", fullName = fullName, email = email)
 
         elif re.search(r'[A-Z]', password) is None:
             flash("Password has to contain atleast 1 uppercase letter.")
+            return render_template("register.html", fullName = fullName, email = email)
 
         elif re.search(r'[$%@#!?%*]', password) is None:
             flash("Password has to contain atleast 1 special character.")
+            return render_template("register.html", fullName = fullName, email = email)
 
-        elif password < 15 and password > 30:
+        elif len(password) < 15 or len(password) > 30:
             flash("Password has to be between 15 and 30 characters.")
+            return render_template("register.html", fullName = fullName, email = email)
 
-        cursor = mysql.connection.cursor()
-        cursor.execute("INSERT into users (fullName, email, password_hash, salt) VALUES (%s, %s, %s, %s)", (fullName, email, hashPass, salt))
-        mysql.connection.commit()
+        else:
+            cursor = mysql.connection.cursor()
+            cursor.execute("INSERT into users (fullName, email, password_hash, salt) VALUES (%s, %s, %s, %s)", (fullName, email, hashPass, salt))
+            mysql.connection.commit()
 
-    return render_template("register.html")
+            flash("Account successfully created!")
+            return render_template("register.html")
+
+
 
 
 
@@ -193,12 +201,12 @@ def login():
             flash("Invalid email address", 'error')
         
         #compares if the password in the input field is equal to the hashed password
-        elif not check_password_hash(user["password"], password):
+        elif not check_password_hash(user["password_hash"], password):
             flash("Invalid password", 'error')
 
         else:
             #Stores the user's session so that it doesn't log them out if they navigate to another page
-            session["user_id"] = user["user_id"]
+            session["user_id"] = user["id"]
             session["fullName"] = user["fullName"]
             session["email"] = user["email"]
             session["salt"] = user["salt"]
@@ -207,6 +215,12 @@ def login():
             return redirect(url_for("accountPage"))
         
     return render_template("login.html") 
+
+
+
+@app.route("/accountPage", methods = ["GET", "POST"])
+def accountPage():
+    return render_template("accountPage.html")
 
 @app.route('/logout')
 def logout():
@@ -218,3 +232,5 @@ if __name__ == "__main__":
     app.run(debug=True) #updates in real-time + shows bugs / errors on CMD
 
 #END: CODE COMPLETED BY CHRISTIAN
+
+
