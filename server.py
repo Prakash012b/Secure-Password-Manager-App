@@ -239,7 +239,7 @@ def accountPage():
  # Fetch all accounts for the current user from the database
     cursor = mysql.connection.cursor()
     cursor.execute(
-        "SELECT id, title, account_username, password_encrypted FROM accounts WHERE user_id = %s",
+        "SELECT id, title, account_email, password_encrypted FROM accounts WHERE user_id = %s",
         (session["user_id"],),
     )
     accounts = cursor.fetchall() # Get all account records as a list of dictionaries
@@ -269,7 +269,7 @@ def addAccount():
      # Handle form submission
     if request.method == "POST":
         title = request.form["title"]
-        account_username = request.form["account_username"]
+        account_email = request.form["account_email"]
         password_plain = request.form["password_plain"]
 
         key = session.get("key")
@@ -287,10 +287,10 @@ def addAccount():
         cursor = mysql.connection.cursor()
         cursor.execute(
             """
-            INSERT INTO accounts (user_id, title, account_username, password_encrypted)
+            INSERT INTO accounts (user_id, title, account_email, password_encrypted)
             VALUES (%s, %s, %s, %s)
             """,
-            (session["user_id"], title, account_username, password_encrypted),
+            (session["user_id"], title, account_email, password_encrypted),
         )
         mysql.connection.commit()
         cursor.close()
@@ -305,20 +305,12 @@ def addAccount():
 def generate_salt() -> bytes:
     return os.urandom(16)
 
-def derive_fernet_key(master_password: str, salt: bytes) -> bytes:
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=salt,
-        iterations=KDF_ITERATIONS
-    )
-    return base64.urlsafe_b64encode(kdf.derive(master_password.encode()))
+
 
 @app.route("/decrypt_account", methods=["POST"])
 def decrypt_account():
     data = request.get_json()
     account_id = data.get("account_id")
-    master_password = data.get("master_password")
 
     if "user_id" not in session:
         return jsonify({"ok": False, "error": "Not authenticated"}), 401
@@ -333,11 +325,11 @@ def decrypt_account():
         cursor.close()
         return jsonify({"ok": False, "error": "User not found"}), 404
 
-    salt = user["salt"]
+    
 
     # Derive key from master password
     try:
-        key = derive_fernet_key(master_password, salt)
+        key = session["key"]
         f = Fernet(key)
     except Exception:
         cursor.close()

@@ -54,7 +54,7 @@
         <tr>
           <th>ID</th>
           <th>Title</th>
-          <th>Account Username</th>
+          <th>Account Email</th>
           <th>Password</th>
         </tr>
       </thead>
@@ -68,7 +68,7 @@
             <!-- Display account details in table cells -->
             <td>{{ acc.id }}</td>
             <td>{{ acc.title }}</td>
-            <td>{{ acc.account_username }}</td>
+            <td>{{ acc.account_email }}</td>
             <td><code>{{ acc.password_encrypted }}</code></td> <!-- Encrypted password -->
           </tr>
           {% endfor %}
