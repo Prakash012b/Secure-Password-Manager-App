@@ -1,0 +1,77 @@
+<!--code by prakash-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Account</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body>
+<!-- Navbar section -->
+
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+      <a class="navbar-brand" href="{{ url_for('accountPage') }}">Password Manager</a>
+      <div class="collapse navbar-collapse">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('accountPage') }}">My Vault</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}">Log Out</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-4">
+     <!-- Flash messages section (success/error messages from backend) -->
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+         <!-- Display message with Bootstrap alert styling -->
+
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <h2>Add New Account</h2>
+    <form method="POST" action="{{ url_for('addAccount') }}">
+      
+            <!-- Hidden or read-only fields -->
+      <div class="mb-3">
+        <label>ID (Auto)</label>
+        <input type="text" class="form-control" value="Auto Generated" readonly>
+      </div>
+
+      <div class="mb-3">
+        <label>User ID</label>
+        <input type="text" class="form-control" value="{{ session['user_id'] }}" readonly>
+      </div>
+      
+        <div class="mb-3">
+        <label>Title</label>
+        <input type="text" name="title" class="form-control" placeholder="e.g. Gmail, Netflix" required>
+      </div>
+
+      <div class="mb-3">
+        <label>Account Username</label>
+        <input type="text" name="account_username" class="form-control" placeholder="e.g. myemail@gmail.com" required>
+      </div>
+
+      <div class="mb-3">
+        <label>Password</label>
+        <input type="password" name="password_plain" class="form-control" placeholder="Enter password" required>
+      </div>
+
+      <button class="btn btn-primary">Save Account</button>
+      <a href="{{ url_for('accountPage') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+  </div>
+</body>
+</html>
+
+<!--code by prakash-->
