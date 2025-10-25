@@ -362,6 +362,67 @@ def decrypt_account():
     except Exception:
         return jsonify({"ok": False, "error": "Invalid master password"}), 403
 
+
+
+# Generates a new 2FA secret
+def generate_2fa_secret():
+    return pyotp.random_base32()  # 16-char secret
+
+# Helper function to generate QR code in base64
+def qr_code_base64(uri):
+    img = qrcode.make(uri) #create QR code from the provided URI
+    buffered = BytesIO() # Create an in-memory buffer to store the image
+    img.save(buffered, format="PNG")
+    return base64.b64encode(buffered.getvalue()).decode()
+
+# Setup 2FA route
+@app.route("/setup_2fa")
+def setup_2fa():
+    #makes sure the user is logged in
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+#grab user email and existing TOTP secret from the database
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT email, totp_secret FROM users WHERE id=%s", (session["user_id"],))
+    user = cursor.fetchone()
+    cursor.close()
+
+    if not user:
+        flash("User not found", "danger")
+        return redirect(url_for("accountPage"))
+
+    # Generate secret only if it doesn't exist
+    if not user["totp_secret"]:
+        totp_secret = pyotp.random_base32()
+        cursor = mysql.connection.cursor()
+        cursor.execute("UPDATE users SET totp_secret=%s WHERE id=%s", (totp_secret, session["user_id"]))
+        mysql.connection.commit()
+        cursor.close()
+    else:
+        totp_secret = user["totp_secret"]
+
+    # Store in session temporarily for verification
+    session["temp_totp_secret"] = totp_secret
+
+    # Generate QR code
+    totp_uri = pyotp.TOTP(totp_secret).provisioning_uri(name=user["email"], issuer_name="Secure Password Manager")
+    qr_b64 = qr_code_base64(totp_uri)
+
+    # Generate **current 6-digit code** for display
+    totp = pyotp.TOTP(totp_secret)
+    current_code = totp.now()
+
+    return render_template(
+        "setup_2fa.html",
+        qr_b64=qr_b64,
+        totp_secret=totp_secret,
+        current_code=current_code  # <-- pass this to HTML
+    )
+
+
+
+
 #END: CODE COMPLETED BY PRAKASH
 
   
