@@ -49,6 +49,9 @@
 #https://flask.palletsprojects.com/en/stable/patterns/flashing/
 #https://stackoverflow.com/questions/44569040/change-color-of-flask-flash-messages
 
+#2FA Verification
+#https://www.freecodecamp.org/news/how-to-implement-two-factor-authentication-in-your-flask-app/#heading-how-to-add-the-setup-2fa-page
+
 #START: CODE COMPLETED BY CHRISTIAN
 from flask import Flask, render_template, redirect, url_for, request, session, flash #pip install flask
 from flask_mysqldb import MySQL #pip install flask_mysqldb (MUST BE PYTHON 3.11)
