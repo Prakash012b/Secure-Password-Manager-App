@@ -420,6 +420,63 @@ def setup_2fa():
         current_code=current_code  # <-- pass this to HTML
     )
 
+# Verify 2FA route
+@app.route("/verify_2fa", methods=["GET", "POST"])
+def verify_2fa():
+
+    pending_user_id = session.get("pending_user_id")
+    pending_password = session.get("pending_password")
+
+    if not pending_user_id:
+        flash("Session expired. Please login again.", "error")
+        return redirect(url_for("login"))
+
+    #grab full user details from database
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT * FROM users WHERE id=%s", (pending_user_id,))
+    user = cursor.fetchone()
+    cursor.close()
+
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for("login"))
+
+    # Use the user's secret if present, else DB secret
+    totp_secret = session.get("temp_totp_secret", user["totp_secret"])
+    
+    # Build a TOTP object and generate the current 6-digit code + QR for display
+    totp = pyotp.TOTP(totp_secret)
+    totp_uri = totp.provisioning_uri(name=user["email"], issuer_name="Secure Password Manager")
+    qr_b64 = qr_code_base64(totp_uri)
+    current_code = totp.now()
+
+
+    #post request when user submits form
+    if request.method == "POST":
+        code = request.form.get("code").strip()
+       
+       #verifies if the code entered by user match the current valid 30-sec window
+        if totp.verify(code):
+            # Successful login
+            session["user_id"] = user["id"]
+            session["fullName"] = user["fullName"]
+            session["email"] = user["email"]
+            session["salt"] = user["salt"]
+            session["key"] = derivationKey(pending_password, user["salt"])
+
+            # Clear temporary session data
+            session.pop("pending_user_id", None)
+            session.pop("pending_password", None)
+            session.pop("temp_totp_secret", None)
+
+            flash("Login successful!", "success")
+            return redirect(url_for("accountPage"))
+        else:
+            flash("Invalid 2FA code. Try the 6-digit code above.", "error")
+
+    # Render verify page again (either GET or failed POST)
+    return render_template("verify_2fa.html", qr_b64=qr_b64, totp_secret=totp_secret, current_code=current_code, email=user["email"])
+
 
 
 
