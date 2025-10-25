@@ -49,6 +49,9 @@
 #https://flask.palletsprojects.com/en/stable/patterns/flashing/
 #https://stackoverflow.com/questions/44569040/change-color-of-flask-flash-messages
 
+#2FA Verification
+#https://www.freecodecamp.org/news/how-to-implement-two-factor-authentication-in-your-flask-app/#heading-how-to-add-the-setup-2fa-page
+
 #START: CODE COMPLETED BY CHRISTIAN
 from flask import Flask, render_template, redirect, url_for, request, session, flash #pip install flask
 from flask_mysqldb import MySQL #pip install flask_mysqldb (MUST BE PYTHON 3.11)
@@ -61,7 +64,9 @@ import re
 import pyotp
 import qrcode
 from io import BytesIO
-
+import pyotp #One-time password library
+import qrcode #Generate QR code
+from io import BytesIO
 
 
 #pip install cryptography
@@ -175,7 +180,6 @@ def register():
 
 
 
-
 #Code by Prakash and Christian
 #Login Function with 2FA
 @app.route("/login", methods=["GET", "POST"])
@@ -224,6 +228,10 @@ def login():
         session["temp_totp_secret"] = user["totp_secret"]
 
     return redirect(url_for("verify_2fa"))
+
+
+#Code by Prakash and Christian
+
 
 #Code by Prakash and Christian
 
@@ -417,7 +425,6 @@ def setup_2fa():
         current_code=current_code  # <-- pass this to HTML
     )
 
-
 # Verify 2FA route
 @app.route("/verify_2fa", methods=["GET", "POST"])
 def verify_2fa():
@@ -474,8 +481,6 @@ def verify_2fa():
 
     # Render verify page again (either GET or failed POST)
     return render_template("verify_2fa.html", qr_b64=qr_b64, totp_secret=totp_secret, current_code=current_code, email=user["email"])
-
-
 
 #END: CODE COMPLETED BY PRAKASH
 
