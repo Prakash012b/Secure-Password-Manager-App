@@ -61,6 +61,9 @@ from flask import request, jsonify
 import os, base64
 from datetime import timedelta, datetime
 import re
+import pyotp #One-time password library
+import qrcode #Generate QR code
+from io import BytesIO
 
 #pip install cryptography
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC 
@@ -175,50 +178,56 @@ def register():
 
 
 
-#Login Function
-@app.route("/login", methods = ["GET", "POST"])
+#Code by Prakash and Christian
+#Login Function with 2FA
+@app.route("/login", methods=["GET", "POST"])
 def login():
-    #Prevents any errors with user registering whilst signed in
+
+    #If the user is login then prevents from re-login and redirect to account page
     if "user_id" in session:
         flash("You are already logged in", "warning")
         return redirect(url_for("accountPage"))
-    
+
+    #If the request is GET show the login page
     if request.method == "GET":
         return render_template("login.html")
-    
-    else:
-        #Grabs the user's email and password
-        email = request.form["email"]
-        password = request.form["password"]
 
-        #Used to grab every user with the specific email typed in (storing session / user id)
+    #Post request- extract email and password from submitted form
+    email = request.form["email"]
+    password = request.form["password"]
+
+    #Query the database to find the user by email
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
+    user = cursor.fetchone()
+    cursor.close()
+
+    #uses 'check_password_hash' to safely compare hashed password
+    if not user or not check_password_hash(user["password_hash"], password):
+        flash("Invalid email or password", "error")
+        return render_template("login.html")
+
+    # Store temporarily before 2FA verification
+    session["pending_user_id"] = user["id"]
+    session["pending_password"] = password
+
+    # If no TOTP secret, generate and store it in session (don't rely on DB fetch timing)
+    if not user["totp_secret"]:
+        totp_secret = pyotp.random_base32()
+        session["temp_totp_secret"] = totp_secret  # use this for first login
+       
+       #save the generated password secret into DB
         cursor = mysql.connection.cursor()
-        cursor.execute("SELECT * FROM users Where email = %s", (email,))
-        user = cursor.fetchone()
+        cursor.execute("UPDATE users SET totp_secret=%s WHERE id=%s", (totp_secret, user["id"]))
+        mysql.connection.commit()
         cursor.close()
+    else:
+        #If user already has a secret, reuse it so their authenticator app still works
+        session["temp_totp_secret"] = user["totp_secret"]
 
-        #Input Validation
-        if not email or not password:
-            flash("You must input an email and password to login.", 'error')
-        
-        elif not user:
-            flash("Invalid email address", 'error')
-        
-        #compares if the password in the input field is equal to the hashed password
-        elif not check_password_hash(user["password_hash"], password):
-            flash("Invalid password", 'error')
+    return redirect(url_for("verify_2fa"))
 
-        else:
-            #Stores the user's session so that it doesn't log them out if they navigate to another page
-            session["user_id"] = user["id"]
-            session["fullName"] = user["fullName"]
-            session["email"] = user["email"]
-            session["salt"] = user["salt"]
-            session["key"] = derivationKey(password, user["salt"]) #Used for Encrypting/Decrypting account passwords
-
-            return redirect(url_for("accountPage"))
-        
-    return render_template("login.html") 
+#Code by Prakash and Christian
 
 
 
