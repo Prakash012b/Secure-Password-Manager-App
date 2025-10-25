@@ -58,6 +58,11 @@ from flask import request, jsonify
 import os, base64
 from datetime import timedelta, datetime
 import re
+import pyotp
+import qrcode
+from io import BytesIO
+
+
 
 #pip install cryptography
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC 
@@ -171,53 +176,56 @@ def register():
 
 
 
-
-#Login Function
-@app.route("/login", methods = ["GET", "POST"])
+#Code by Prakash and Christian
+#Login Function with 2FA
+@app.route("/login", methods=["GET", "POST"])
 def login():
-    #Prevents any errors with user registering whilst signed in
+
+    #If the user is login then prevents from re-login and redirect to account page
     if "user_id" in session:
         flash("You are already logged in", "warning")
         return redirect(url_for("accountPage"))
-    
+
+    #If the request is GET show the login page
     if request.method == "GET":
         return render_template("login.html")
-    
-    else:
-        #Grabs the user's email and password
-        email = request.form["email"]
-        password = request.form["password"]
 
-        #Used to grab every user with the specific email typed in (storing session / user id)
+    #Post request- extract email and password from submitted form
+    email = request.form["email"]
+    password = request.form["password"]
+
+    #Query the database to find the user by email
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
+    user = cursor.fetchone()
+    cursor.close()
+
+    #uses 'check_password_hash' to safely compare hashed password
+    if not user or not check_password_hash(user["password_hash"], password):
+        flash("Invalid email or password", "error")
+        return render_template("login.html")
+
+    # Store temporarily before 2FA verification
+    session["pending_user_id"] = user["id"]
+    session["pending_password"] = password
+
+    # If no TOTP secret, generate and store it in session (don't rely on DB fetch timing)
+    if not user["totp_secret"]:
+        totp_secret = pyotp.random_base32()
+        session["temp_totp_secret"] = totp_secret  # use this for first login
+       
+       #save the generated password secret into DB
         cursor = mysql.connection.cursor()
-        cursor.execute("SELECT * FROM users Where email = %s", (email,))
-        user = cursor.fetchone()
+        cursor.execute("UPDATE users SET totp_secret=%s WHERE id=%s", (totp_secret, user["id"]))
+        mysql.connection.commit()
         cursor.close()
+    else:
+        #If user already has a secret, reuse it so their authenticator app still works
+        session["temp_totp_secret"] = user["totp_secret"]
 
-        #Input Validation
-        if not email or not password:
-            flash("You must input an email and password to login.", 'error')
-        
-        elif not user:
-            flash("Invalid email address", 'error')
-        
-        #compares if the password in the input field is equal to the hashed password
-        elif not check_password_hash(user["password_hash"], password):
-            flash("Invalid password", 'error')
+    return redirect(url_for("verify_2fa"))
 
-        else:
-            #Stores the user's session so that it doesn't log them out if they navigate to another page
-            session["user_id"] = user["id"]
-            session["fullName"] = user["fullName"]
-            session["email"] = user["email"]
-            session["salt"] = user["salt"]
-            session["key"] = derivationKey(password, user["salt"]) #Used for Encrypting/Decrypting account passwords
-
-            return redirect(url_for("accountPage"))
-        
-    return render_template("login.html") 
-
-
+#Code by Prakash and Christian
 
 @app.route('/logout')
 def logout():
@@ -225,6 +233,8 @@ def logout():
     return redirect(url_for("login"))
   
 #END: CODE COMPLETED BY CHRISTIAN
+
+
 
 #START: CODE COMPLETED BY PRAKASH
 
@@ -349,6 +359,123 @@ def decrypt_account():
         return jsonify({"ok": True, "password": password_plain})
     except Exception:
         return jsonify({"ok": False, "error": "Invalid master password"}), 403
+
+
+# Generates a new 2FA secret
+def generate_2fa_secret():
+    return pyotp.random_base32()  # 16-char secret
+
+# Helper function to generate QR code in base64
+def qr_code_base64(uri):
+    img = qrcode.make(uri) #create QR code from the provided URI
+    buffered = BytesIO() # Create an in-memory buffer to store the image
+    img.save(buffered, format="PNG")
+    return base64.b64encode(buffered.getvalue()).decode()
+
+# Setup 2FA route
+@app.route("/setup_2fa")
+def setup_2fa():
+    #makes sure the user is logged in
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+#grab user email and existing TOTP secret from the database
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT email, totp_secret FROM users WHERE id=%s", (session["user_id"],))
+    user = cursor.fetchone()
+    cursor.close()
+
+    if not user:
+        flash("User not found", "danger")
+        return redirect(url_for("accountPage"))
+
+    # Generate secret only if it doesn't exist
+    if not user["totp_secret"]:
+        totp_secret = pyotp.random_base32()
+        cursor = mysql.connection.cursor()
+        cursor.execute("UPDATE users SET totp_secret=%s WHERE id=%s", (totp_secret, session["user_id"]))
+        mysql.connection.commit()
+        cursor.close()
+    else:
+        totp_secret = user["totp_secret"]
+
+    # Store in session temporarily for verification
+    session["temp_totp_secret"] = totp_secret
+
+    # Generate QR code
+    totp_uri = pyotp.TOTP(totp_secret).provisioning_uri(name=user["email"], issuer_name="Secure Password Manager")
+    qr_b64 = qr_code_base64(totp_uri)
+
+    # Generate **current 6-digit code** for display
+    totp = pyotp.TOTP(totp_secret)
+    current_code = totp.now()
+
+    return render_template(
+        "setup_2fa.html",
+        qr_b64=qr_b64,
+        totp_secret=totp_secret,
+        current_code=current_code  # <-- pass this to HTML
+    )
+
+
+# Verify 2FA route
+@app.route("/verify_2fa", methods=["GET", "POST"])
+def verify_2fa():
+
+    pending_user_id = session.get("pending_user_id")
+    pending_password = session.get("pending_password")
+
+    if not pending_user_id:
+        flash("Session expired. Please login again.", "error")
+        return redirect(url_for("login"))
+
+    #grab full user details from database
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT * FROM users WHERE id=%s", (pending_user_id,))
+    user = cursor.fetchone()
+    cursor.close()
+
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for("login"))
+
+    # Use the user's secret if present, else DB secret
+    totp_secret = session.get("temp_totp_secret", user["totp_secret"])
+    
+    # Build a TOTP object and generate the current 6-digit code + QR for display
+    totp = pyotp.TOTP(totp_secret)
+    totp_uri = totp.provisioning_uri(name=user["email"], issuer_name="Secure Password Manager")
+    qr_b64 = qr_code_base64(totp_uri)
+    current_code = totp.now()
+
+
+    #post request when user submits form
+    if request.method == "POST":
+        code = request.form.get("code").strip()
+       
+       #verifies if the code entered by user match the current valid 30-sec window
+        if totp.verify(code):
+            # Successful login
+            session["user_id"] = user["id"]
+            session["fullName"] = user["fullName"]
+            session["email"] = user["email"]
+            session["salt"] = user["salt"]
+            session["key"] = derivationKey(pending_password, user["salt"])
+
+            # Clear temporary session data
+            session.pop("pending_user_id", None)
+            session.pop("pending_password", None)
+            session.pop("temp_totp_secret", None)
+
+            flash("Login successful!", "success")
+            return redirect(url_for("accountPage"))
+        else:
+            flash("Invalid 2FA code. Try the 6-digit code above.", "error")
+
+    # Render verify page again (either GET or failed POST)
+    return render_template("verify_2fa.html", qr_b64=qr_b64, totp_secret=totp_secret, current_code=current_code, email=user["email"])
+
+
 
 #END: CODE COMPLETED BY PRAKASH
 
