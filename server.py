@@ -52,6 +52,11 @@
 #2FA Verification
 #https://www.freecodecamp.org/news/how-to-implement-two-factor-authentication-in-your-flask-app/#heading-how-to-add-the-setup-2fa-page
 
+#Generate Password
+#https://www.geeksforgeeks.org/python/create-a-random-password-generator-using-python/
+#https://stackoverflow.com/questions/9264033/how-to-insert-value-in-input-with-javascript
+#https://flask.palletsprojects.com/en/stable/quickstart/
+
 #START: CODE COMPLETED BY CHRISTIAN
 from flask import Flask, render_template, redirect, url_for, request, session, flash #pip install flask
 from flask_mysqldb import MySQL #pip install flask_mysqldb (MUST BE PYTHON 3.11)
@@ -67,6 +72,7 @@ from io import BytesIO
 import pyotp #One-time password library
 import qrcode #Generate QR code
 from io import BytesIO
+import string, random
 
 
 #pip install cryptography
@@ -229,6 +235,29 @@ def login():
 
     return redirect(url_for("verify_2fa"))
 
+
+#Random password generator
+@app.route("/passwordGenerator", methods=["GET", "POST"])
+def passwordGenerator():
+    if request.method == "GET":
+        return render_template("passwordGenerator.html")
+    
+    
+#On click, this will generate a valid password between 15 and 30 characters
+@app.route('/generatePassword')
+def generatePassword():
+    characterList = string.ascii_letters + string.digits + '!@#$%^&*()'
+    password = ""
+    randNum = random.randint(15,30)
+
+    
+    for i in range(randNum):
+        randomCharacter = random.choice(characterList)
+        password = password+randomCharacter
+
+    
+    flash(f"Here is a valid password that is {len(password)} characters long.", "success")
+    return render_template("passwordGenerator.html", password=password)
 
 #Code by Prakash and Christian
 
