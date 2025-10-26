@@ -26,6 +26,19 @@
         <input type="text" name="code" placeholder="Enter 6-digit code" class="form-control mb-3" required>
         <button type="submit" class="btn btn-primary">Verify</button>
     </form>
+    
+    <div class="container mt-4">
+     <!-- Flash messages section (success/error messages from backend) -->
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+         <!-- Display message with Bootstrap alert styling -->
+
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
 
     
 </div>

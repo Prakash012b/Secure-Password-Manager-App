@@ -61,8 +61,8 @@ from flask import request, jsonify
 import os, base64
 from datetime import timedelta, datetime
 import re
-import pyotp
-import qrcode
+import pyotp #pip install pyotp
+import qrcode #pip install qrcode
 from io import BytesIO
 import pyotp #One-time password library
 import qrcode #Generate QR code
