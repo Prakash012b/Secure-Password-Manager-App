@@ -183,10 +183,10 @@ def register():
 
             flash("Account successfully created!")
             return render_template("register.html")
+#END: CODE COMPLETED BY CHRISTIAN
 
 
-
-#Code by Prakash and Christian
+#START: Code by Prakash and Christian
 #Login Function with 2FA
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -234,13 +234,15 @@ def login():
         session["temp_totp_secret"] = user["totp_secret"]
 
     return redirect(url_for("verify_2fa"))
+#END:Code by Prakash and Christian
 
 
+
+#START: CODE COMPLETED BY CHRISTIAN
 #Random password generator
 @app.route("/passwordGenerator", methods=["GET", "POST"])
 def passwordGenerator():
-    if request.method == "GET":
-        return render_template("passwordGenerator.html")
+    return render_template("passwordGenerator.html")
     
     
 #On click, this will generate a valid password between 15 and 30 characters
@@ -259,10 +261,9 @@ def generatePassword():
     flash(f"Here is a valid password that is {len(password)} characters long.", "success")
     return render_template("passwordGenerator.html", password=password)
 
-#Code by Prakash and Christian
 
 
-#Code by Prakash and Christian
+
 
 @app.route('/logout')
 def logout():
