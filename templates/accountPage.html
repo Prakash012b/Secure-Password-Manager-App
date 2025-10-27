@@ -43,9 +43,22 @@
             {%endwith%}
     </div>
 
-    <h1>Accounts</h1>
+    
 
     <!--Start: code by prakash-->
+
+
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1>Accounts</h1>
+
+            <!-- Show 2FA button or badge -->
+            {% if not has_2fa %}
+                <a href="{{ url_for('setup_2fa') }}" class="btn btn-warning">Set Up 2FA</a>
+            {% else %}
+                <span class="badge bg-success fs-6">2FA Enabled</span>
+            {% endif %}
+        </div>
 
 <h2>Your Saved Accounts</h2>
 
