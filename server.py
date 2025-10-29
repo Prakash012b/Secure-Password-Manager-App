@@ -171,7 +171,8 @@ def register():
             flash("Password has to contain atleast 1 uppercase letter.")
             return render_template("register.html", fullName = fullName, email = email)
 
-        elif re.search(r'[$%@#!?%*]', password) is None:
+        #regex: https://owasp.org/www-community/password-special-characters
+        elif re.search(r'[!"#$%&\'()*+,\-./:;<=>?@^_|~>]', password) is None:
             flash("Password has to contain atleast 1 special character.")
             return render_template("register.html", fullName = fullName, email = email)
 
