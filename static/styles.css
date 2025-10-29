@@ -1,0 +1,73 @@
+/*START: styling done by: Christian*/
+
+.authentication {
+    text-align: center;
+    font-weight: bold;
+    color: #000000;
+    padding: 50px;
+
+    
+}
+
+.authentication input{
+    margin-bottom: 15px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+   
+    
+}
+
+
+.authentication form {
+    display: flex;
+    flex-direction: column; 
+    gap: 15px; 
+    width: 50%;
+    margin: auto;
+    justify-content: center; 
+}
+
+.authentication button{
+    width: 400px;
+    margin: auto;
+    justify-content: center; 
+    background-color: #0a65ee; 
+    color: white;
+    font-weight: bold;
+}
+
+/* darkens button on hover */
+.authentication button:hover {
+    background-color: #083bd4; 
+}
+
+.authentication input.fieldLength {
+    text-align: center;
+}
+
+.authentication h2 a.generateButton {
+    display: inline-block;
+    text-decoration: none;  
+}
+
+
+
+.flash{
+    padding: 10px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 20px;
+    width: 100%;
+    display: block;  
+    margin: 20px auto;
+}
+
+
+
+.success { color: #28a745;  } 
+.error { color: #dc3545;  }
+.warning { color: #ffc107;  } 
+
+
+/*END: Styling done by: Christian*/
+

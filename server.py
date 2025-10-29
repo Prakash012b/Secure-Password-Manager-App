@@ -57,6 +57,9 @@
 #https://stackoverflow.com/questions/9264033/how-to-insert-value-in-input-with-javascript
 #https://flask.palletsprojects.com/en/stable/quickstart/
 
+
+
+
 #START: CODE COMPLETED BY CHRISTIAN
 from flask import Flask, render_template, redirect, url_for, request, session, flash #pip install flask
 from flask_mysqldb import MySQL #pip install flask_mysqldb (MUST BE PYTHON 3.11)
@@ -186,6 +189,11 @@ def register():
 #END: CODE COMPLETED BY CHRISTIAN
 
 
+
+
+
+
+
 #START: Code by Prakash and Christian
 #Login Function
 @app.route("/login", methods = ["GET", "POST"])
@@ -248,6 +256,10 @@ def login():
 
 
 
+
+
+
+
 #START: CODE COMPLETED BY CHRISTIAN
 #Random password generator
 @app.route("/passwordGenerator", methods=["GET", "POST"])
@@ -281,6 +293,12 @@ def logout():
     return redirect(url_for("login"))
   
 #END: CODE COMPLETED BY CHRISTIAN
+
+
+
+
+
+
 
 
 
@@ -449,7 +467,7 @@ def setup_2fa():
 
     # If 2FA already set up, show message
     if user and user["totp_secret"]:
-        flash("2FA is already set up for your account.", "info")
+        flash("2FA is already set up for your account.", "warning")
         cursor.close()
         return redirect(url_for("accountPage"))
 
