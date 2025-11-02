@@ -460,13 +460,13 @@ def setup_2fa():
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    # Save secret to DB
+    # Get user's existing 2FA secret(if have any)
  
     cursor = mysql.connection.cursor()
     cursor.execute("SELECT totp_secret FROM users WHERE id = %s", (session["user_id"],))
     user = cursor.fetchone()
 
-    # If 2FA already set up, show message
+    # If 2FA already set up, show message to prevent re-setup
     if user and user["totp_secret"]:
         flash("2FA is already set up for your account.", "warning")
         cursor.close()
@@ -477,16 +477,23 @@ def setup_2fa():
         code = request.form.get("code")
         secret = session.get("temp_secret")
 
+    #Check if session expired
         if not secret:
             flash("Session expired, please try again.", "error")
             return redirect(url_for("setup_2fa"))
 
+
+        #Create TOTP object using user's temporary secret
         totp = pyotp.TOTP(secret)
+        
+        #Verify the code user entered
         if totp.verify(code):
             # Save secret to DB after successful verification
             cursor.execute("UPDATE users SET totp_secret = %s WHERE id = %s", (secret, session["user_id"]))
             mysql.connection.commit()
             cursor.close()
+
+            #Remove temporary secret from session
             session.pop("temp_secret", None)
             flash(" 2FA setup complete! You’ll need to use your authenticator app next login.", "success")
             return redirect(url_for("accountPage"))
@@ -497,33 +504,44 @@ def setup_2fa():
     secret = pyotp.random_base32()
     session["temp_secret"] = secret  # Temporarily store secret until verified
 
-    totp = pyotp.TOTP(secret)
-    current_code = totp.now()  # <-- generate 6-digit code
+    totp = pyotp.TOTP(secret) #Create TOTP object
+    current_code = totp.now()  #Generate current 6-digit code
 
+    #Create the QR code that yser can scan with google authentication
     otp_uri = pyotp.totp.TOTP(secret).provisioning_uri(
         name=f"user_{session['user_id']}",
         issuer_name="Password Manager"
     )
+
+    #Convert the QR code image to base64 so it can be displayed on webpage
     qr = qrcode.make(otp_uri)
     buffer = BytesIO()
     qr.save(buffer, format="PNG")
     qr_data = base64.b64encode(buffer.getvalue()).decode()
 
     cursor.close()
+
+    #get setup page showing 6 digit code fro testing
     return render_template("setup_2fa.html", qr_code=qr_data, current_code=current_code)
 
 @app.route("/verify_2fa", methods=["GET", "POST"])
 def verify_2fa():
+
+    #Check if the user is coming from login proces
     if "pending_user_id" not in session:
         flash("Session expired. Please log in again.", "error")
         return redirect(url_for("login"))
 
+    #Get the user's secret key from the temporary session
     secret = session.get("temp_totp_secret")
-    totp = pyotp.TOTP(secret)
-    current_code = totp.now()  # <-- current 6-digit code for display
 
+    #Create a TOTP object using the stored secret
+    totp = pyotp.TOTP(secret)
+    current_code = totp.now()  #Generate a valid 6-digit code for display
+
+    #If user submit verification from post
     if request.method == "POST":
-        code = request.form.get("code")
+        code = request.form.get("code") #get 6 digit code entered by user
         # Allow current and previous time step
         if totp.verify(code, valid_window=1):
             # Successful 2FA
@@ -532,14 +550,17 @@ def verify_2fa():
             user = cursor.fetchone()
             cursor.close()
 
+            #Get password used at login
             password = session.get("pending_password")
 
+            #set parmanent session variable 
             session["user_id"] = user["id"]
             session["fullName"] = user["fullName"]
             session["email"] = user["email"]
             session["salt"] = user["salt"]
             session["key"] = derivationKey(password, user["salt"])
 
+            #Remove temporary session variables(clean-up)
             session.pop("pending_user_id", None)
             session.pop("pending_password", None)
             session.pop("temp_totp_secret", None)
@@ -549,7 +570,7 @@ def verify_2fa():
         else:
             flash("Invalid or expired 2FA code.", "error")
 
-    # Render page with the 6-digit code for testing
+    # For Get or failed POST, re-render verification page with current 6 digit code for testing
     return render_template("verify_2fa.html", current_code=current_code)
 
 #END: CODE COMPLETED BY PRAKASH
