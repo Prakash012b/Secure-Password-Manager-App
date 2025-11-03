@@ -71,3 +71,118 @@
 
 /*END: Styling done by: Christian*/
 
+/*START: Styling done by: Prakash*/
+
+/* ---------- 2FA SETUP PAGE ---------- */
+/* Styles the container  form for setting up 2FA */
+.container.text-center {
+    background: var(--card-bg);
+    padding: 40px;
+    margin-top: 40px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    max-width: 550px;
+}
+
+/* Colors and weights for headings */
+.container h1, h2 {
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+
+/* Styles the QR code image displayed in setup */
+img[alt="QR Code"] {
+    border: 4px solid var(--primary-color);
+    border-radius: var(--radius);
+    padding: 10px;
+    background-color: #fff;
+    box-shadow: var(--shadow);
+}
+
+
+/* Displays the 6-digit code text larger and visible */
+.fw-bold.text-primary {
+    font-size: 22px;
+    letter-spacing: 3px;
+    color: var(--primary-color) !important;
+}
+
+/* Styles for input field for 6-digit code */
+form input.form-control {
+    padding: 12px;
+    font-size: 18px;
+    border-radius: var(--radius);
+    text-align: center;
+}
+
+/* Adds glow effect when input box is clicked */
+form input.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 5px rgba(10, 101, 238, 0.3);
+}
+
+
+
+/* ---------- 2FA VERIFY PAGE ---------- */
+
+/* Styles the verification box  */
+.container.mt-5 {
+    background: var(--card-bg);
+    padding: 40px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    max-width: 480px;
+}
+
+/* Title on verification page */
+.container.mt-5 h2 {
+    color: var(--primary-color);
+    font-weight: 700;  /* Bold font weight */
+    text-align: center;  /* Bold font weight */
+}
+
+/* Paragraph text styling */
+.container.mt-5 p {
+    text-align: center;  /* Centers paragraphs under the title */
+    font-size: 16px;
+}
+
+/* Style the Box that displays the current 6-digit code  */
+.container.mt-5 strong {
+    display: block;
+    background: #d2def4;
+    color: var(--primary-color);
+    padding: 10px;
+    border-radius: var(--radius);
+    letter-spacing: 3px;
+    margin: 10px 0;
+}
+
+
+/* Link styling (e.g. "Back to Login") */
+.btn-link {
+    display: block;
+    text-align: center;
+    color: var(--primary-color); /* Makes link blue to match theme */
+    font-weight: 600;
+    text-decoration: none;
+}
+
+/* Adds underline when hovered */
+.btn-link:hover {
+    text-decoration: underline;
+}
+
+
+/* ---------- ACCOUNT PAGE ---------- */
+
+.table th {
+    background-color: var(--primary-color);
+    color: rgb(57, 33, 33);
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+/*END: Styling done by: Prakash*/
