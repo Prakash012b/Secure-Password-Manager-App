@@ -58,6 +58,10 @@
 #https://flask.palletsprojects.com/en/stable/quickstart/
 
 
+#Encryption and decryption of password
+#https://www.geeksforgeeks.org/python/password-hashing-with-bcrypt-in-flask/
+#https://www.geeksforgeeks.org/python/how-to-encrypt-and-decrypt-strings-in-python/
+#https://ch-nabarun.medium.com/how-to-encrypt-and-decrypt-application-password-using-python-15893cd28bef
 
 
 #START: CODE COMPLETED BY CHRISTIAN
